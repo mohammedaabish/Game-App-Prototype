@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Game Prototype</title>
+    <title>Game Prototype </title>
     <style>
 
 html, body {
@@ -35,8 +35,6 @@ html, body {
       height: calc(100vh - 50px);
       border: 0;
     }
-   
-
     </style>
     </head>
 <body>
@@ -51,9 +49,11 @@ html, body {
 
       // ✅ 1) PUT YOUR VALUES HERE
       const FIGMA_CLIENT_ID = "FWOX8jGoe8OJ8mwd1i1HwB";
-      const EMBED_HOST = "http://127.0.0.1:5500/"; // or "127.0.0.1:5500" (match your Live Server)
+      const EMBED_HOST = "http://127.0.0.1:5500/"; // (match your Live Server)
       const FIGMA_EMBED_BASE =
         "https://embed.figma.com/proto/jtR5cqm7eZ9JZLupMfniwX/Game-working-without-login?node-id=0-1&t=vjDDqqhX6ZAtQTN1-1&hide-ui=true";
+        const HOME_NODE_ID = "271301:16389"; // Starting node ID
+
 
       // ✅ 2) Build the final iframe URL (Embed API requires client-id + embed-host)
       const FIGMA_IFRAME_URL =
@@ -67,23 +67,25 @@ html, body {
         iframe.src = FIGMA_IFRAME_URL;
       });
 
-      // ✅ 4) Listen for events from the prototype
-      window.addEventListener("message", (event) => {
-        // IMPORTANT: events come from https://www.figma.com
-        if (event.origin !== "https://www.figma.com") return;
-
-        // You will see events like INITIAL_LOAD, PRESENTED_NODE_CHANGED
-        console.log("FIGMA EVENT:", event.data);
-
-        if (event.data?.type === "PRESENTED_NODE_CHANGED") {
-          const nodeId = event.data.data.presentedNodeId;
-          console.log("✅ Screen changed to node:", nodeId);
-        }
-      });
+      
       let score = 0;
 let lastNode = null;
 // prevents double scoring
 const scored = new Set();
+
+  let hudVisible = false; // ❌ hidden on home
+
+  function showHud() {
+    document.getElementById("hud").style.display = "flex";
+    hudVisible = true;
+  }
+
+  function hideHud() {
+    document.getElementById("hud").style.display = "none";
+    hudVisible = false;
+  }
+
+  hideHud(); // ensure hidden on load
 
 // 🔁 Nodes that should RESET the game
 const RESET_NODES = new Set([
@@ -98,8 +100,7 @@ function resetGame() {
   updateUI("(reset)");
   console.log("🔄 Game reset");
 }
-
-// CHANGE THESE IDs IF NEEDED
+// Points per node ID
 const NODE_POINTS = {
   "269300:52679": 10,  // on click Bell screen
   
@@ -114,10 +115,27 @@ const NODE_POINTS = {
   "275313:2637":0,     // End page (second high score)
 
   // Joslin path
-  "269300:64179":15,  // Choose (Joslin)
-  "269299:44402": 15,  // Advanced skill match (Joslin)
+  "269300:64179":20,  // Choose (Joslin)
+  "269299:44402":20,  // Advanced skill match (Joslin)
   "269300:66023": 10,  // Quick assign (Joslin)
   "275313:2712": 0,    // End page (high score)
+
+  // Joules Path Choosen
+  "277341:9436":20,   // Joules Screen Opened
+  "277341:10561":20,   // Staff Project Selected
+  "277341:14401":20,   // Joules Staffing people option
+
+  //Choose Joslin or Grace
+  "277341:14401":10,
+
+// Joslin Path Choosen
+  "277341:15523":20,   // Joslin Holt Selected
+  "277341:17815":0,   // Joule Joslin End Screen
+
+// Grace Path Choosen
+  "277346:19859":15,   // Grace Selected
+  "277342:17937":0,   // Grace End Screen 
+
 };
 
 function updateUI(nodeId) {
@@ -134,21 +152,6 @@ function add(points, reason) {
   updateUI(lastNode);
 }
 
-function applyBranchBonus(prevNode, currentNode) {
-  // We only decide the branch AFTER leaving the shared choose screen
-  if (prevNode === "269300:63277") {
-    // Joslin confirmed
-    if (currentNode === "269300:64179" && !scored.has("BONUS_JOSLIN")) {
-      scored.add("BONUS_JOSLIN");
-      add(10, "Joslin chosen");
-    }
-    // Grace confirmed
-    if (currentNode === "269300:66918" && !scored.has("BONUS_GRACE")) {
-      scored.add("BONUS_GRACE");
-      add(0, "Grace chosen");
-    }
-  }
-}
 
 window.addEventListener("message", (event) => {
   // Only accept messages from Figma domains
@@ -163,11 +166,13 @@ window.addEventListener("message", (event) => {
   // 🔁 RESET SCORE if player chose Play Again or Back to Lobby
 if (RESET_NODES.has(nodeId)) {
   resetGame();
-  return; // stop further scoring
+  lastNode = nodeId; 
+  return;
 }
-
-  // 1) Branch bonus (based on lastNode -> nodeId)
-  applyBranchBonus(lastNode, nodeId);
+// ✅ First real navigation = show score
+if (!hudVisible) {
+      showHud();
+    }
 
   // 2) Normal points (only once per node)
   const pts = NODE_POINTS[nodeId] ?? 0;
