@@ -1,0 +1,185 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Figma Prototype + Events</title>
+    <style>
+
+html, body {
+      margin: 0;
+      height: 100%;
+      background: #111;
+      color: #fff;
+      font-family: Arial, sans-serif;
+    }
+
+    #hud {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 99999;
+      background: #111;
+      padding: 10px;
+      display: flex;
+      gap: 18px;
+      align-items: center;
+    }
+
+    #figmaFrame {
+      position: fixed;
+      top: 50px;                 
+      left: 0;
+      width: 100%;
+      height: calc(100vh - 50px);
+      border: 0;
+    }
+   
+
+    </style>
+    </head>
+<body>
+    
+  <!-- ✅ Score bar MUST be in body -->
+  <div id="hud">
+    <div>Score: <span id="score">0</span></div>
+  </div>
+  <iframe id="figmaFrame" allowfullscreen></iframe>
+  
+    <script>
+
+      // ✅ 1) PUT YOUR VALUES HERE
+      const FIGMA_CLIENT_ID = "FWOX8jGoe8OJ8mwd1i1HwB";
+      const EMBED_HOST = "http://127.0.0.1:5500/"; // or "127.0.0.1:5500" (match your Live Server)
+      const FIGMA_EMBED_BASE =
+        "https://embed.figma.com/proto/jtR5cqm7eZ9JZLupMfniwX/Game-working-without-login?node-id=0-1&t=vjDDqqhX6ZAtQTN1-1";
+
+      // ✅ 2) Build the final iframe URL (Embed API requires client-id + embed-host)
+      const FIGMA_IFRAME_URL =
+        FIGMA_EMBED_BASE +
+        "&embed-host=" + encodeURIComponent(EMBED_HOST) +
+        "&client-id=" + encodeURIComponent(FIGMA_CLIENT_ID);
+
+      // ✅ 3) After DOM loads, set iframe src
+      window.addEventListener("DOMContentLoaded", () => {
+        const iframe = document.getElementById("figmaFrame");
+        iframe.src = FIGMA_IFRAME_URL;
+      });
+
+      // ✅ 4) Listen for events from the prototype
+      window.addEventListener("message", (event) => {
+        // IMPORTANT: events come from https://www.figma.com
+        if (event.origin !== "https://www.figma.com") return;
+
+        // You will see events like INITIAL_LOAD, PRESENTED_NODE_CHANGED
+        console.log("FIGMA EVENT:", event.data);
+
+        if (event.data?.type === "PRESENTED_NODE_CHANGED") {
+          const nodeId = event.data.data.presentedNodeId;
+          console.log("✅ Screen changed to node:", nodeId);
+        }
+      });
+      let score = 0;
+let lastNode = null;
+// prevents double scoring
+const scored = new Set();
+
+// 🔁 Nodes that should RESET the game
+const RESET_NODES = new Set([
+  "271313:4216",  // Play Again
+  "271301:16389"  // Back to Lobby
+]);
+
+function resetGame() {
+  score = 0;
+  lastNode = null;
+  scored.clear();
+  updateUI("(reset)");
+  console.log("🔄 Game reset");
+}
+
+// CHANGE THESE IDs IF NEEDED
+const NODE_POINTS = {
+  "269300:52679": 10,  // on click Bell screen
+  
+
+  // shared screen (Grace/Joslin choose) => 0 here on purpose
+  "269300:63277": 10, // on click of staff
+
+  // Grace path
+  "269300:66918": 10,  // Choose (Grace)
+  "269300:67823": 10, // Advanced skill match (Grace)
+  "269321:15352": 10,   // Quick assign (Grace)  
+  "275313:2637":0,     // End page (second high score)
+
+  // Joslin path
+  "269300:64179":15,  // Choose (Joslin)
+  "269299:44402": 15,  // Advanced skill match (Joslin)
+  "269300:66023": 10,  // Quick assign (Joslin)
+  "275313:2712": 0,    // End page (high score)
+};
+
+function updateUI(nodeId) {
+  const scoreEl = document.getElementById("score");
+  if (scoreEl) scoreEl.textContent = String(score);
+
+  const screenEl = document.getElementById("lastScreen");
+  if (screenEl) screenEl.textContent = nodeId || "(none)";
+}
+
+function add(points, reason) {
+  score += points;
+  console.log(`✅ +${points} (${reason}) | Total=${score}`);
+  updateUI(lastNode);
+}
+
+function applyBranchBonus(prevNode, currentNode) {
+  // We only decide the branch AFTER leaving the shared choose screen
+  if (prevNode === "269300:63277") {
+    // Joslin confirmed
+    if (currentNode === "269300:64179" && !scored.has("BONUS_JOSLIN")) {
+      scored.add("BONUS_JOSLIN");
+      add(10, "Joslin chosen");
+    }
+    // Grace confirmed
+    if (currentNode === "269300:66918" && !scored.has("BONUS_GRACE")) {
+      scored.add("BONUS_GRACE");
+      add(0, "Grace chosen");
+    }
+  }
+}
+
+window.addEventListener("message", (event) => {
+  // Only accept messages from Figma domains
+  if (!String(event.origin).includes("figma.com")) return;
+
+  const msg = event.data;
+  if (msg?.type !== "PRESENTED_NODE_CHANGED") return;
+  const nodeId = msg?.data?.presentedNodeId;
+  if (!nodeId) return;
+
+  console.log("🟩 Screen changed:", nodeId);
+  // 🔁 RESET SCORE if player chose Play Again or Back to Lobby
+if (RESET_NODES.has(nodeId)) {
+  resetGame();
+  return; // stop further scoring
+}
+
+  // 1) Branch bonus (based on lastNode -> nodeId)
+  applyBranchBonus(lastNode, nodeId);
+
+  // 2) Normal points (only once per node)
+  const pts = NODE_POINTS[nodeId] ?? 0;
+  if (pts > 0 && !scored.has(nodeId)) {
+    scored.add(nodeId);
+    add(pts, `Entered ${nodeId}`);
+  }
+
+  lastNode = nodeId;
+  updateUI(nodeId);
+});
+
+    </script>
+    </body>
+</html>
