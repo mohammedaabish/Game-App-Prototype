@@ -15,25 +15,26 @@ html, body {
     }
 
     #hud {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
+    position: fixed;
+      top: 10px;
+      left: 10px;
       z-index: 99999;
       background: #111;
       padding: 10px;
       display: flex;
       gap: 18px;
       align-items: center;
+      border-radius: 10px;
+      pointer-events: none;
     }
 
     #figmaFrame {
       position: fixed;
-      top: 50px;                 
-      left: 0;
-      width: 100%;
-      height: calc(100vh - 50px);
+      inset:0;                 
+      width: 100vw;
+      height:100vh;
       border: 0;
+      display:block;
     }
     </style>
     </head>
