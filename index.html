@@ -40,7 +40,7 @@ html, body {
     </head>
 <body>
     
-  <!-- ✅ Score bar MUST be in body -->
+
   <div id="hud">
     <div>Score: <span id="score">0</span></div>
   </div>
@@ -48,7 +48,6 @@ html, body {
   
     <script>
 
-      // ✅ 1) PUT YOUR VALUES HERE
       const FIGMA_CLIENT_ID = "FWOX8jGoe8OJ8mwd1i1HwB";
       const EMBED_HOST = "http://127.0.0.1:5500/"; // (match your Live Server)
       const FIGMA_EMBED_BASE =
@@ -56,13 +55,11 @@ html, body {
         const HOME_NODE_ID = "271301:16389"; // Starting node ID
 
 
-      // ✅ 2) Build the final iframe URL (Embed API requires client-id + embed-host)
       const FIGMA_IFRAME_URL =
         FIGMA_EMBED_BASE +
         "&embed-host=" + encodeURIComponent(EMBED_HOST) +
         "&client-id=" + encodeURIComponent(FIGMA_CLIENT_ID);
 
-      // ✅ 3) After DOM loads, set iframe src
       window.addEventListener("DOMContentLoaded", () => {
         const iframe = document.getElementById("figmaFrame");
         iframe.src = FIGMA_IFRAME_URL;
